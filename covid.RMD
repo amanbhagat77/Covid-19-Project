@@ -1,0 +1,74 @@
+---
+title: "Covid19 - Leaflet"
+author: "Aman Bhagat"
+date: "27/06/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
+
+## Introduction
+
+In this leaflet demo, I have shown the total number of cases of COVID 19 across globe representing with Circle markers. The size of the Circle markers represents the total number of cases in the Country.
+
+For this I have used Covid 19 dataset till 26/06/2020 to represent the data. 
+
+```{r covid}
+##Covid19 Dataset
+covid19 <- read.csv("D:/Games/R Workspace/COVID 19/covid19.csv")
+head(covid19)
+
+##Countries Coordinates Dataset 
+countries <- read.csv("D:/Games/R Workspace/COVID 19/countries.csv")
+```
+
+## Data Cleaning and Processing
+
+You can also embed plots, for example:
+
+```{r data cleaning}
+## Grouping the data country wise
+covid <- covid19 %>% group_by(countriesAndTerritories,geoId) %>% summarize("total.cases" = sum(cases))
+covid <- as.data.frame(covid)
+
+##Cleaning the data
+covid$countriesAndTerritories <- gsub("_", " ", covid$countriesAndTerritories)
+covid$countriesAndTerritories <- gsub("Cases on an international conveyance Japan", "Japan", covid$countriesAndTerritories)
+covid$geoId <- gsub("JPG11668" , "JP" , covid$geoId)
+covid$geoId <- gsub("UK" , "GB" , covid$geoId)
+
+
+## Adding Latitude and Longitude values to each location
+n <- nrow(covid)
+
+counter <- 1
+covid$lon[counter] <- 0
+covid$lat[counter] <- 0
+
+while(counter <= n){
+  cc <- covid$geoId[counter]
+  if(cc %in% countries$country){
+    covid$lon[counter] <- countries[grep(cc,countries$country),]$longitude
+    covid$lat[counter] <- countries[grep(cc,countries$country),]$latitude
+  }
+  counter <- counter + 1
+}
+
+##Removing the values for which we don't have coordinates
+covid<- covid %>% filter(covid$lon != 0)
+
+##Ordering the data with respect to total number of cases in descending order
+covid <- covid[(order(-covid$total.cases)),]
+cases <- covid$Total.Cases
+head(covid)
+```
+
+## Cases arround the world
+
+```{r leaflet}
+library(leaflet)
+leaflet(covid) %>% addTiles() %>% addCircles(weight = 3, radius = covid$total.cases)
+```
